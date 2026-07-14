@@ -68,8 +68,11 @@
 </header>
 
 <div class="code-box">
-  <div class="code-label">Bağlantı Kodu</div>
+  <div class="code-label">Bağlantı Kodu (sabit)</div>
   <div class="code waiting" id="codeDisplay">oluşturuluyor…</div>
+  <div style="margin-top:10px;">
+    <a href="#" id="resetCode" style="color:var(--dim); font-size:11px; text-decoration:underline;">Kodu sıfırla</a>
+  </div>
 </div>
 
 <main>
@@ -92,7 +95,7 @@
 
 <footer>
   <div class="notice">
-    <b>Önemli:</b> Konum izni yalnızca bu telefonun kendi kullanıcısı onaylayabilir. Sayfa arka planda çalışmaz — ekran kapanır ya da sekmeden çıkarsanız paylaşım durur. HTTPS üzerinden açılması gerekir.
+    <b>Önemli:</b> Bu kod artık bu telefona/tarayıcıya bağlı olarak sabit kalır (tarayıcı verilerini temizlemediğin sürece değişmez) — babana bir kere verdikten sonra tekrar tekrar söylemene gerek yok. Konum izni yalnızca bu telefonun kendi kullanıcısı onaylayabilir. <b>Sayfa arka planda çalışmaz</b> — ekran kilitlenir ya da sekmeden çıkarsan paylaşım durur; sürekli arka plan takibi için Google Maps'in "Konum Paylaşımı" özelliğini kullanman gerekir. HTTPS üzerinden açılması gerekir.
   </div>
 </footer>
 
@@ -117,12 +120,24 @@
     log.innerHTML = (isError ? '<strong style="color:#ff6b5b">Hata:</strong> ' : '<strong>Durum:</strong> ') + msg;
   }
 
+  const STORAGE_KEY = 'konum-paylasim-kodu';
+
   function randomCode(){
     return String(Math.floor(100000 + Math.random() * 900000));
   }
 
-  function createPeer(){
-    const id = randomCode();
+  function getOrCreateCode(){
+    let saved = localStorage.getItem(STORAGE_KEY);
+    if(!saved){
+      saved = randomCode();
+      localStorage.setItem(STORAGE_KEY, saved);
+    }
+    return saved;
+  }
+
+  function createPeer(forceNew){
+    const id = forceNew ? randomCode() : getOrCreateCode();
+    if(forceNew){ localStorage.setItem(STORAGE_KEY, id); }
     const p = new Peer(id, { debug: 0 });
 
     p.on('open', (openedId) => {
@@ -146,7 +161,7 @@
     });
 
     p.on('error', (err) => {
-      if(err.type === 'unavailable-id'){ createPeer(); }
+      if(err.type === 'unavailable-id'){ createPeer(true); }
       else { setLog(err.message || 'Bağlantı hatası.', true); }
     });
 
@@ -210,6 +225,16 @@
 
   startBtn.addEventListener('click', startSharing);
   stopBtn.addEventListener('click', stopSharing);
+
+  document.getElementById('resetCode').addEventListener('click', (e) => {
+    e.preventDefault();
+    if(!confirm('Kodu sıfırlarsan babanın kaydettiği eski kod artık çalışmaz, yeni kodu tekrar vermen gerekir. Emin misin?')) return;
+    stopSharing();
+    if(peer){ peer.destroy(); peer = null; }
+    codeDisplay.textContent = 'oluşturuluyor…';
+    codeDisplay.classList.add('waiting');
+    peer = createPeer(true);
+  });
 
   window.addEventListener('beforeunload', () => {
     if(watchId !== null){ navigator.geolocation.clearWatch(watchId); }
