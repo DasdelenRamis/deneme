@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sohbet, Arama & Konum</title>
+<title>Grup Sohbet, Arama & Konum</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root{
@@ -19,13 +19,13 @@
   .eyebrow{ font-size:10.5px; letter-spacing:.16em; color:var(--dim); text-transform:uppercase; }
   h1{ margin:5px 0 2px; font-size:18px; font-weight:600; letter-spacing:-0.01em; }
   .sub{ font-size:11.5px; color:var(--dim); line-height:1.45; }
-  .me-code{ display:flex; align-items:center; gap:8px; margin-top:8px; font-size:11.5px; color:var(--dim); }
+  .me-code{ display:flex; align-items:center; gap:8px; margin-top:8px; font-size:11.5px; color:var(--dim); flex-wrap:wrap; }
   .me-code b{ color:var(--amber); font-size:14px; letter-spacing:.06em; }
   .me-code a{ color:var(--dim); text-decoration:underline; cursor:pointer; font-size:10.5px; }
 
-  .connect-bar{ display:flex; gap:8px; padding:10px 16px 0; }
+  .connect-bar{ display:flex; gap:8px; padding:10px 16px 0; flex-wrap:wrap; }
   input.code-in{
-    flex:1; font-family:var(--mono); font-size:14px; letter-spacing:.05em;
+    flex:1; min-width:140px; font-family:var(--mono); font-size:14px; letter-spacing:.05em;
     background:var(--panel); border:1px solid var(--line); color:var(--text);
     padding:9px 11px; border-radius:3px; outline:none;
   }
@@ -39,21 +39,37 @@
   button.danger{ border-color:var(--danger); color:var(--danger); }
   button:disabled{ opacity:.35; cursor:not-allowed; }
 
-  .peer-status{
-    display:flex; align-items:center; gap:8px; padding:9px 16px; font-size:11px;
-    color:var(--dim); letter-spacing:.05em; text-transform:uppercase; border-bottom:1px solid var(--line);
+  .participants{
+    display:flex; gap:6px; flex-wrap:wrap; padding:8px 16px; border-bottom:1px solid var(--line); font-size:11px;
   }
-  .dot{ width:7px; height:7px; border-radius:50%; background:var(--dim); }
-  .peer-status.online .dot{ background:var(--accent); box-shadow:0 0 6px var(--accent); }
-  .peer-status.online{ color:var(--accent); }
+  .chip{
+    display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
+    padding:4px 9px; border-radius:14px; color:var(--dim);
+  }
+  .chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+  .chip .x{ cursor:pointer; color:var(--danger); font-weight:700; margin-left:2px; }
+  .chip.empty{ color:var(--dim); font-style:italic; }
 
   .call-bar{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
     padding:9px 16px; border-bottom:1px solid var(--line); background:var(--panel2);
   }
   .call-bar .info{ font-size:11.5px; color:var(--dim); }
   .call-bar.active .info{ color:var(--accent); }
-  .call-controls{ display:flex; gap:6px; }
+  .call-controls{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  .video-grid{
+    display:none; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:6px;
+    padding:10px 16px; border-bottom:1px solid var(--line); background:#000;
+  }
+  .video-grid.show{ display:grid; }
+  .tile{ position:relative; background:var(--panel2); border-radius:4px; overflow:hidden; aspect-ratio:4/3; }
+  .tile video{ width:100%; height:100%; object-fit:cover; display:block; }
+  .tile .label{
+    position:absolute; bottom:4px; left:6px; font-size:10px; color:#fff;
+    background:rgba(0,0,0,.5); padding:2px 6px; border-radius:3px;
+  }
+  .tile.audio-only{ display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:11px; }
 
   .tabs{ display:flex; border-bottom:1px solid var(--line); }
   .tab{
@@ -66,12 +82,12 @@
   .panel{ flex:1; display:none; flex-direction:column; overflow:hidden; }
   .panel.active{ display:flex; }
 
-  /* Sohbet */
   .messages{ flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:8px; }
-  .bubble{ max-width:75%; padding:9px 13px; border-radius:12px; font-size:13.5px; line-height:1.4; word-wrap:break-word; }
+  .bubble{ max-width:78%; padding:9px 13px; border-radius:12px; font-size:13.5px; line-height:1.4; word-wrap:break-word; }
   .bubble.me{ align-self:flex-end; background:var(--accent-dim); color:#eafff2; border-bottom-right-radius:3px; }
   .bubble.them{ align-self:flex-start; background:var(--panel2); color:var(--text); border-bottom-left-radius:3px; }
   .bubble.system{ align-self:center; background:transparent; color:var(--dim); font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; }
+  .bubble .sender{ display:block; font-size:9.5px; color:var(--amber); margin-bottom:2px; }
   .bubble .time{ display:block; font-size:9px; color:var(--dim); margin-top:4px; text-align:right; }
   .composer{ display:flex; gap:8px; padding:10px 16px 14px; border-top:1px solid var(--line); }
   .composer input{
@@ -81,7 +97,6 @@
   .composer input:focus{ border-color:var(--accent); }
   .composer button{ border-radius:20px; }
 
-  /* Konum */
   .loc-controls{ display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); }
   .map-wrap{ position:relative; flex:1; min-height:260px; }
   #map{ width:100%; height:100%; }
@@ -90,12 +105,6 @@
     color:var(--dim); font-size:12px; text-align:center; padding:24px; line-height:1.6;
     background:var(--panel); z-index:5;
   }
-  .loc-info{
-    display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 16px; font-size:12px;
-    border-top:1px solid var(--line); background:var(--panel2);
-  }
-  .loc-info .k{ color:var(--dim); font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
-  .loc-info .v{ color:var(--text); font-size:13px; }
 
   .log{ padding:0 16px 6px; font-size:10.5px; color:var(--dim); min-height:14px; }
   .log strong{ color:var(--text); }
@@ -106,27 +115,40 @@
 <body>
 
 <header>
-  <div class="eyebrow">Uçtan Uca — Tarayıcı İçi</div>
-  <h1>Sohbet, Arama & Konum</h1>
-  <div class="sub">Kendi kodunu karşı tarafa ver, onun kodunu gir ve bağlan. Her şey doğrudan iki tarayıcı arasında akar, sunucuda saklanmaz.</div>
-  <div class="me-code">Senin kodun: <b id="myCode">oluşturuluyor…</b> <a id="resetCode">sıfırla</a></div>
+  <div class="eyebrow">Uçtan Uca — Tarayıcı İçi — Çoklu Kişi</div>
+  <h1>Grup Sohbet, Arama & Konum</h1>
+  <div class="sub">Herkes kendi kodunu paylaşır, birbirinize bağlanınca grup otomatik oluşur — biri sana bağlanan kişinin diğer arkadaşlarını da otomatik tanıtır.</div>
+  <div class="me-code">
+    Senin kodun: <b id="myCode">oluşturuluyor…</b>
+    <a id="resetCode">rastgele değiştir</a>
+  </div>
+  <div class="connect-bar" style="padding-top:8px;">
+    <input type="text" class="code-in" id="customCodeInput" placeholder="Kendi kodunu yaz (örn. ahmet2024)" maxlength="20">
+    <button id="setCustomCodeBtn">Bu Kodu Kullan</button>
+  </div>
 </header>
 
 <div class="connect-bar">
-  <input type="text" class="code-in" id="peerCodeInput" placeholder="Karşı tarafın kodu" inputmode="numeric" maxlength="6">
-  <button class="primary" id="connectBtn">Bağlan</button>
+  <input type="text" class="code-in" id="peerCodeInput" placeholder="Eklemek istediğin kişinin kodu" maxlength="20">
+  <button class="primary" id="connectBtn">Kişi Ekle</button>
 </div>
 
-<div class="peer-status" id="peerStatus"><span class="dot"></span><span id="peerStatusText">Bağlı değil</span></div>
+<div class="participants" id="participants">
+  <div class="chip empty">Henüz kimse bağlı değil</div>
+</div>
 
 <div class="call-bar" id="callBar">
   <div class="info" id="callInfo">Arama yok</div>
   <div class="call-controls">
-    <button id="callBtn" disabled>Sesli Ara</button>
+    <button id="callAudioBtn" disabled>Sesli Ara (Herkesi)</button>
+    <button id="callVideoBtn" disabled>Görüntülü Ara (Herkesi)</button>
     <button id="muteBtn" disabled style="display:none;">Sustur</button>
-    <button class="danger" id="hangupBtn" disabled style="display:none;">Kapat</button>
+    <button id="camBtn" disabled style="display:none;">Kamerayı Kapat</button>
+    <button class="danger" id="hangupBtn" disabled style="display:none;">Aramadan Ayrıl</button>
   </div>
 </div>
+
+<div class="video-grid" id="videoGrid"></div>
 
 <div class="tabs">
   <div class="tab active" data-tab="chat">Sohbet</div>
@@ -150,62 +172,61 @@
     </div>
     <div class="map-wrap">
       <div id="map"></div>
-      <div class="map-placeholder" id="mapPlaceholder">Karşı taraf konumunu paylaştığında burada haritada görünecek.</div>
-    </div>
-    <div class="loc-info">
-      <div><span class="k">Enlem</span><br><span class="v" id="lat">—</span></div>
-      <div><span class="k">Boylam</span><br><span class="v" id="lng">—</span></div>
-      <div><span class="k">Doğruluk</span><br><span class="v" id="acc">—</span></div>
-      <div><span class="k">Son Güncelleme</span><br><span class="v" id="updated">—</span></div>
+      <div class="map-placeholder" id="mapPlaceholder">Grup üyeleri konum paylaştığında burada haritada görünecek.</div>
     </div>
   </div>
 </main>
 
-<audio id="remoteAudio" autoplay playsinline></audio>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
+  // ---------- Elemanlar ----------
   const myCodeEl = document.getElementById('myCode');
   const resetCodeEl = document.getElementById('resetCode');
+  const customCodeInput = document.getElementById('customCodeInput');
+  const setCustomCodeBtn = document.getElementById('setCustomCodeBtn');
   const peerCodeInput = document.getElementById('peerCodeInput');
   const connectBtn = document.getElementById('connectBtn');
-  const peerStatus = document.getElementById('peerStatus');
-  const peerStatusText = document.getElementById('peerStatusText');
+  const participantsEl = document.getElementById('participants');
+
   const callBar = document.getElementById('callBar');
   const callInfo = document.getElementById('callInfo');
-  const callBtn = document.getElementById('callBtn');
+  const callAudioBtn = document.getElementById('callAudioBtn');
+  const callVideoBtn = document.getElementById('callVideoBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const camBtn = document.getElementById('camBtn');
   const hangupBtn = document.getElementById('hangupBtn');
+  const videoGrid = document.getElementById('videoGrid');
+
   const messagesEl = document.getElementById('messages');
   const msgInput = document.getElementById('msgInput');
   const sendBtn = document.getElementById('sendBtn');
   const log = document.getElementById('log');
-  const remoteAudio = document.getElementById('remoteAudio');
 
   const shareLocBtn = document.getElementById('shareLocBtn');
   const stopLocBtn = document.getElementById('stopLocBtn');
   const mapPlaceholder = document.getElementById('mapPlaceholder');
-  const latEl = document.getElementById('lat');
-  const lngEl = document.getElementById('lng');
-  const accEl = document.getElementById('acc');
-  const updatedEl = document.getElementById('updated');
 
-  const STORAGE_KEY = 'birlesik-kod';
+  const STORAGE_KEY = 'grup-kodu';
+
   let peer = null;
-  let dataConn = null;
-  let currentCall = null;
-  let localAudioStream = null;
+  const peers = new Map(); // code -> { conn, call, tile }
+  let localStream = null;
+  let inCall = false;
   let muted = false;
-
+  let camOff = false;
   let watchId = null;
-  let map = null, marker = null, accCircle = null;
+  let map = null;
+  const markers = new Map(); // code -> {marker, circle}
 
   function setLog(msg, isError){
     log.innerHTML = (isError ? '<strong style="color:#ff6b5b">Hata:</strong> ' : '<strong>Durum:</strong> ') + msg;
   }
+  function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function sanitizeCode(raw){ return raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20); }
+  function randomCode(){ return String(Math.floor(100000 + Math.random() * 900000)); }
 
-  // ---- Tabs ----
+  // ---------- Tabs ----------
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -216,62 +237,79 @@
     });
   });
 
-  // ---- Kod / Peer ----
-  function randomCode(){ return String(Math.floor(100000 + Math.random() * 900000)); }
+  // ---------- Katılımcı listesi ----------
+  function refreshParticipantsUI(){
+    participantsEl.innerHTML = '';
+    if(peers.size === 0){
+      participantsEl.innerHTML = '<div class="chip empty">Henüz kimse bağlı değil</div>';
+    } else {
+      peers.forEach((p, code) => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = '<span class="dot"></span>' + escapeHtml(code) + ' <span class="x" data-code="' + escapeHtml(code) + '">✕</span>';
+        participantsEl.appendChild(chip);
+      });
+    }
+    const hasPeers = peers.size > 0;
+    msgInput.disabled = !hasPeers;
+    sendBtn.disabled = !hasPeers;
+    callAudioBtn.disabled = !hasPeers || inCall;
+    callVideoBtn.disabled = !hasPeers || inCall;
+    shareLocBtn.disabled = !hasPeers;
+  }
+  participantsEl.addEventListener('click', (e) => {
+    if(e.target.classList.contains('x')){
+      const code = e.target.dataset.code;
+      const p = peers.get(code);
+      if(p){
+        if(p.call) p.call.close();
+        if(p.conn) p.conn.close();
+        peers.delete(code);
+        removeTileFor(code);
+        refreshParticipantsUI();
+        addBubble(code + ' bağlantıdan çıkarıldı', 'system');
+      }
+    }
+  });
+
+  // ---------- Sohbet ----------
+  function addBubble(text, type, time, sender){
+    const div = document.createElement('div');
+    div.className = 'bubble ' + type;
+    const t = time || new Date();
+    if(type === 'system'){
+      div.textContent = text;
+    } else {
+      let html = '';
+      if(type === 'them' && sender) html += '<span class="sender">' + escapeHtml(sender) + '</span>';
+      html += escapeHtml(text) + '<span class="time">' + t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) + '</span>';
+      div.innerHTML = html;
+    }
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click', () => {
+    const text = msgInput.value.trim();
+    if(!text || peers.size === 0) return;
+    const t = Date.now();
+    broadcast({ type: 'msg', text, t });
+    addBubble(text, 'me', new Date(t));
+    msgInput.value = '';
+  });
+  msgInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendBtn.click(); });
+
+  function broadcast(payload, excludeCode){
+    peers.forEach((p, code) => {
+      if(code !== excludeCode && p.conn && p.conn.open) p.conn.send(payload);
+    });
+  }
+
+  // ---------- Peer / Mesh ----------
   function getOrCreateCode(){
     let saved = localStorage.getItem(STORAGE_KEY);
     if(!saved){ saved = randomCode(); localStorage.setItem(STORAGE_KEY, saved); }
     return saved;
-  }
-
-  function addBubble(text, type, time){
-    const div = document.createElement('div');
-    div.className = 'bubble ' + type;
-    const t = time || new Date();
-    if(type === 'system'){ div.textContent = text; }
-    else{ div.innerHTML = escapeHtml(text) + '<span class="time">' + t.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) + '</span>'; }
-    messagesEl.appendChild(div);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
-  function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-  function setPeerOnline(isOnline, label){
-    peerStatus.classList.toggle('online', isOnline);
-    peerStatusText.textContent = label;
-    msgInput.disabled = !isOnline;
-    sendBtn.disabled = !isOnline;
-    callBtn.disabled = !isOnline || !!currentCall;
-    shareLocBtn.disabled = !isOnline;
-  }
-
-  function setupDataConn(conn){
-    dataConn = conn;
-    conn.on('open', () => {
-      setPeerOnline(true, 'Bağlı: ' + conn.peer);
-      addBubble('Bağlantı kuruldu', 'system');
-      setLog('Bağlantı kuruldu.');
-    });
-    conn.on('data', (data) => {
-      if(!data || !data.type) return;
-      if(data.type === 'msg'){
-        addBubble(data.text, 'them', new Date(data.t));
-      } else if(data.type === 'loc'){
-        mapPlaceholder.style.display = 'none';
-        latEl.textContent = data.lat.toFixed(6);
-        lngEl.textContent = data.lng.toFixed(6);
-        accEl.textContent = Math.round(data.acc || 0) + ' m';
-        updatedEl.textContent = new Date(data.t).toLocaleTimeString('tr-TR');
-        updateMap(data.lat, data.lng, data.acc);
-      } else if(data.type === 'loc-stop'){
-        addBubble('Karşı taraf konum paylaşımını durdurdu', 'system');
-      }
-    });
-    conn.on('close', () => {
-      setPeerOnline(false, 'Bağlı değil');
-      addBubble('Bağlantı kapandı', 'system');
-      dataConn = null;
-    });
-    conn.on('error', (err) => setLog(err.message || 'Veri bağlantı hatası.', true));
   }
 
   function createPeer(forceNew){
@@ -281,15 +319,10 @@
 
     p.on('open', (openedId) => {
       myCodeEl.textContent = openedId;
-      setLog('Hazır. Kodunu karşı tarafa verebilirsin.');
+      setLog('Hazır. Kodunu paylaşabilirsin.');
     });
     p.on('connection', (conn) => setupDataConn(conn));
-    p.on('call', (call) => {
-      const accept = confirm(call.peer + ' kodlu kişi seni sesli arıyor. Kabul et?');
-      if(!accept){ call.close(); return; }
-      startLocalAudio().then((stream) => { call.answer(stream); bindCall(call); })
-        .catch(() => setLog('Mikrofon izni verilmeden aramaya cevap verilemez.', true));
-    });
+    p.on('call', (call) => handleIncomingCall(call));
     p.on('error', (err) => {
       if(err.type === 'unavailable-id'){ createPeer(true); }
       else { setLog(err.message || 'Bağlantı hatası.', true); }
@@ -297,144 +330,295 @@
     return p;
   }
 
-  // ---- Sesli Arama ----
-  async function startLocalAudio(){
-    if(localAudioStream) return localAudioStream;
-    localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    return localAudioStream;
+  function connectToPeerCode(code){
+    if(code === myCodeEl.textContent) return;
+    if(peers.has(code)) return;
+    const conn = peer.connect(code, { reliable: true });
+    setupDataConn(conn);
   }
 
-  function bindCall(call){
-    currentCall = call;
-    callInfo.textContent = 'Aranıyor / bağlanıyor…';
-    callBtn.disabled = true;
-    muteBtn.style.display = 'inline-block';
-    hangupBtn.style.display = 'inline-block';
-    muteBtn.disabled = false;
-    hangupBtn.disabled = false;
-    callBar.classList.add('active');
+  function setupDataConn(conn){
+    const code = conn.peer;
+    if(peers.has(code) && peers.get(code).conn && peers.get(code).conn.open) return; // zaten bağlı
+    const entry = peers.get(code) || {};
+    entry.conn = conn;
+    peers.set(code, entry);
 
-    call.on('stream', (remoteStream) => {
-      remoteAudio.srcObject = remoteStream;
-      callInfo.textContent = 'Görüşme sürüyor — ' + call.peer;
-      addBubble('Sesli arama başladı', 'system');
+    conn.on('open', () => {
+      addBubble(code + ' bağlandı', 'system');
+      refreshParticipantsUI();
+      // grup mesh: kime bağlıysam listemi paylaş
+      broadcastRosterTo(code);
+      // eğer aramadaysam, yeni gelen kişiyi de aramaya dahil et
+      if(inCall && localStream){ initiateCallTo(code); }
     });
-    call.on('close', () => endCall());
-    call.on('error', (err) => { setLog(err.message || 'Arama hatası.', true); endCall(); });
+    conn.on('data', (data) => handleData(code, data));
+    conn.on('close', () => {
+      const p = peers.get(code);
+      if(p && p.call) p.call.close();
+      peers.delete(code);
+      removeTileFor(code);
+      refreshParticipantsUI();
+      addBubble(code + ' ayrıldı', 'system');
+    });
+    conn.on('error', (err) => setLog(err.message || 'Veri bağlantı hatası: ' + code, true));
   }
 
-  function endCall(){
-    if(currentCall){ currentCall.close(); currentCall = null; }
-    if(localAudioStream){ localAudioStream.getTracks().forEach(t => t.stop()); localAudioStream = null; }
-    remoteAudio.srcObject = null;
-    callInfo.textContent = 'Arama yok';
+  function broadcastRosterTo(code){
+    const p = peers.get(code);
+    if(!p || !p.conn || !p.conn.open) return;
+    const others = Array.from(peers.keys()).filter(c => c !== code);
+    p.conn.send({ type: 'roster', codes: others });
+  }
+
+  function handleData(fromCode, data){
+    if(!data || !data.type) return;
+    if(data.type === 'msg'){
+      addBubble(data.text, 'them', new Date(data.t), fromCode);
+    } else if(data.type === 'roster'){
+      (data.codes || []).forEach(c => { if(c && c !== myCodeEl.textContent) connectToPeerCode(c); });
+    } else if(data.type === 'loc'){
+      mapPlaceholder.style.display = 'none';
+      updateMarker(fromCode, data.lat, data.lng, data.acc);
+    } else if(data.type === 'loc-stop'){
+      removeMarker(fromCode);
+      addBubble(fromCode + ' konum paylaşımını durdurdu', 'system');
+    }
+  }
+
+  // ---------- Sesli / Görüntülü Arama (grup) ----------
+  async function startCall(withVideo){
+    if(peers.size === 0) return;
+    try{
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: withVideo });
+    }catch(err){
+      setLog('Mikrofon' + (withVideo ? '/kamera' : '') + ' izni verilmedi.', true);
+      return;
+    }
+    inCall = true;
+    muted = false; camOff = false;
+    updateCallUI(withVideo);
+    if(withVideo) addLocalTile();
+    peers.forEach((p, code) => initiateCallTo(code));
+    addBubble((withVideo ? 'Görüntülü' : 'Sesli') + ' arama başlatıldı', 'system');
+  }
+
+  function initiateCallTo(code){
+    const p = peers.get(code);
+    if(!p || p.call || !localStream) return;
+    const call = peer.call(code, localStream);
+    bindCall(call, code);
+  }
+
+  function handleIncomingCall(call){
+    const code = call.peer;
+    if(inCall && localStream){
+      call.answer(localStream);
+      bindCall(call, code);
+      return;
+    }
+    const withVideo = confirm(code + ' seni arıyor. Kabul et? (Mikrofon ve kamera izni istenecek, kamerasız görüşmek istersen sonra kapatabilirsin)');
+    if(!withVideo){ call.close(); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then((stream) => {
+      localStream = stream;
+      inCall = true; muted = false; camOff = false;
+      updateCallUI(true);
+      addLocalTile();
+      call.answer(localStream);
+      bindCall(call, code);
+      // aynı anda diğer bağlı kişileri de aramaya dahil et
+      peers.forEach((p, c) => { if(c !== code) initiateCallTo(c); });
+    }).catch(() => setLog('Mikrofon/kamera izni verilmedi, arama kabul edilemedi.', true));
+  }
+
+  function bindCall(call, code){
+    const p = peers.get(code) || {};
+    p.call = call;
+    peers.set(code, p);
+    call.on('stream', (remoteStream) => addRemoteTile(code, remoteStream));
+    call.on('close', () => { removeTileFor(code); const pp = peers.get(code); if(pp) pp.call = null; checkCallStillActive(); });
+    call.on('error', (err) => setLog('Arama hatası (' + code + '): ' + (err.message||''), true));
+  }
+
+  function checkCallStillActive(){
+    let anyActive = false;
+    peers.forEach(p => { if(p.call) anyActive = true; });
+    if(!anyActive && inCall){ /* herkes ayrıldı ama biz hâlâ "aramada" görünüyoruz, kullanıcı kendi kapatabilir */ }
+  }
+
+  function updateCallUI(withVideo){
+    callBar.classList.add('active');
+    callInfo.textContent = (withVideo ? 'Görüntülü' : 'Sesli') + ' görüşme sürüyor';
+    callAudioBtn.disabled = true;
+    callVideoBtn.disabled = true;
+    muteBtn.style.display = 'inline-block'; muteBtn.disabled = false; muteBtn.textContent = 'Sustur';
+    hangupBtn.style.display = 'inline-block'; hangupBtn.disabled = false;
+    if(withVideo){
+      camBtn.style.display = 'inline-block'; camBtn.disabled = false; camBtn.textContent = 'Kamerayı Kapat';
+      videoGrid.classList.add('show');
+    }
+  }
+
+  function addLocalTile(){
+    let tile = document.getElementById('tile-self');
+    if(!tile){
+      tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.id = 'tile-self';
+      tile.innerHTML = '<video autoplay playsinline muted></video><div class="label">Sen</div>';
+      videoGrid.appendChild(tile);
+    }
+    const v = tile.querySelector('video');
+    v.srcObject = localStream;
+  }
+
+  function addRemoteTile(code, stream){
+    videoGrid.classList.add('show');
+    let tile = document.getElementById('tile-' + code);
+    const hasVideo = stream.getVideoTracks().length > 0;
+    if(!tile){
+      tile = document.createElement('div');
+      tile.id = 'tile-' + code;
+      videoGrid.appendChild(tile);
+    }
+    if(hasVideo){
+      tile.className = 'tile';
+      tile.innerHTML = '<video autoplay playsinline></video><div class="label">' + escapeHtml(code) + '</div>';
+      tile.querySelector('video').srcObject = stream;
+    } else {
+      tile.className = 'tile audio-only';
+      tile.innerHTML = '🔊 ' + escapeHtml(code);
+      const a = document.createElement('audio');
+      a.autoplay = true; a.srcObject = stream;
+      tile.appendChild(a);
+    }
+  }
+
+  function removeTileFor(code){
+    const tile = document.getElementById('tile-' + code);
+    if(tile) tile.remove();
+  }
+
+  function endCallForMe(){
+    peers.forEach(p => { if(p.call){ p.call.close(); p.call = null; } });
+    if(localStream){ localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    inCall = false; muted = false; camOff = false;
+    videoGrid.innerHTML = ''; videoGrid.classList.remove('show');
     callBar.classList.remove('active');
-    callBtn.disabled = !dataConn;
-    muteBtn.style.display = 'none';
-    hangupBtn.style.display = 'none';
-    muteBtn.textContent = 'Sustur';
-    muted = false;
-    if(dataConn) addBubble('Arama sona erdi', 'system');
+    callInfo.textContent = 'Arama yok';
+    muteBtn.style.display = 'none'; camBtn.style.display = 'none'; hangupBtn.style.display = 'none';
+    refreshParticipantsUI();
+    addBubble('Aramadan ayrıldın', 'system');
   }
 
-  // ---- Konum ----
+  callAudioBtn.addEventListener('click', () => startCall(false));
+  callVideoBtn.addEventListener('click', () => startCall(true));
+  hangupBtn.addEventListener('click', endCallForMe);
+  muteBtn.addEventListener('click', () => {
+    if(!localStream) return;
+    muted = !muted;
+    localStream.getAudioTracks().forEach(t => t.enabled = !muted);
+    muteBtn.textContent = muted ? 'Sesi Aç' : 'Sustur';
+  });
+  camBtn.addEventListener('click', () => {
+    if(!localStream) return;
+    const videoTracks = localStream.getVideoTracks();
+    if(videoTracks.length === 0) return;
+    camOff = !camOff;
+    videoTracks.forEach(t => t.enabled = !camOff);
+    camBtn.textContent = camOff ? 'Kamerayı Aç' : 'Kamerayı Kapat';
+  });
+
+  // ---------- Konum ----------
   function initMap(lat, lng){
-    map = L.map('map', { zoomControl: true }).setView([lat, lng], 16);
+    map = L.map('map', { zoomControl: true }).setView([lat, lng], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-    marker = L.marker([lat, lng]).addTo(map);
-    accCircle = L.circle([lat, lng], { radius: 20, color: '#e0b56c', fillOpacity: 0.1 }).addTo(map);
   }
-  function updateMap(lat, lng, acc){
-    if(!map){ initMap(lat, lng); }
-    else{ marker.setLatLng([lat, lng]); accCircle.setLatLng([lat, lng]); accCircle.setRadius(acc || 20); map.panTo([lat, lng]); }
+  function updateMarker(code, lat, lng, acc){
+    if(!map) initMap(lat, lng);
+    let m = markers.get(code);
+    if(!m){
+      const marker = L.marker([lat, lng]).addTo(map).bindPopup(code);
+      const circle = L.circle([lat, lng], { radius: acc || 20, color: '#e0b56c', fillOpacity: 0.1 }).addTo(map);
+      m = { marker, circle };
+      markers.set(code, m);
+    } else {
+      m.marker.setLatLng([lat, lng]);
+      m.circle.setLatLng([lat, lng]);
+      m.circle.setRadius(acc || 20);
+    }
+  }
+  function removeMarker(code){
+    const m = markers.get(code);
+    if(m){ map.removeLayer(m.marker); map.removeLayer(m.circle); markers.delete(code); }
   }
 
   function startSharingLocation(){
     if(!navigator.geolocation){ setLog('Bu tarayıcı konum erişimini desteklemiyor.', true); return; }
-    if(!dataConn || !dataConn.open){ setLog('Önce karşı tarafla bağlantı kurun.', true); return; }
+    if(peers.size === 0){ setLog('Önce en az bir kişiyle bağlantı kurun.', true); return; }
     shareLocBtn.disabled = true;
     setLog('Konum izni isteniyor…');
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        const t = Date.now();
-        if(dataConn && dataConn.open){
-          dataConn.send({ type: 'loc', lat: latitude, lng: longitude, acc: accuracy, t });
-        }
-        stopLocBtn.disabled = false;
-        stopLocBtn.style.display = 'inline-block';
-        setLog('Konumun karşı tarafa gönderildi.');
+        broadcast({ type: 'loc', lat: latitude, lng: longitude, acc: accuracy, t: Date.now() });
+        stopLocBtn.disabled = false; stopLocBtn.style.display = 'inline-block';
+        setLog('Konumun gruba gönderildi.');
       },
       (err) => {
         shareLocBtn.disabled = false;
-        if(err.code === err.PERMISSION_DENIED){ setLog('Konum izni verilmedi.', true); }
-        else{ setLog(err.message || 'Konum alınamadı.', true); }
+        setLog(err.code === err.PERMISSION_DENIED ? 'Konum izni verilmedi.' : (err.message || 'Konum alınamadı.'), true);
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
   }
-
   function stopSharingLocation(){
     if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
-    if(dataConn && dataConn.open){ dataConn.send({ type: 'loc-stop' }); }
-    shareLocBtn.disabled = !dataConn;
-    stopLocBtn.disabled = true;
-    stopLocBtn.style.display = 'none';
+    broadcast({ type: 'loc-stop' });
+    shareLocBtn.disabled = peers.size === 0;
+    stopLocBtn.disabled = true; stopLocBtn.style.display = 'none';
     setLog('Konum paylaşımın durduruldu.');
   }
-
-  // ---- Bağlantı ----
-  function connectToPeer(){
-    const code = peerCodeInput.value.trim();
-    if(!code){ setLog('Karşı tarafın kodunu girin.', true); return; }
-    if(!peer || peer.destroyed) peer = createPeer();
-    const doConnect = () => { const conn = peer.connect(code, { reliable: true }); setupDataConn(conn); };
-    if(peer.open){ doConnect(); } else { peer.on('open', doConnect); }
-  }
-
-  // ---- Olaylar ----
-  callBtn.addEventListener('click', async () => {
-    if(!dataConn) return;
-    try{ const stream = await startLocalAudio(); const call = peer.call(dataConn.peer, stream); bindCall(call); }
-    catch(err){ setLog('Mikrofon izni verilmedi.', true); }
-  });
-  muteBtn.addEventListener('click', () => {
-    if(!localAudioStream) return;
-    muted = !muted;
-    localAudioStream.getAudioTracks().forEach(t => t.enabled = !muted);
-    muteBtn.textContent = muted ? 'Sesi Aç' : 'Sustur';
-  });
-  hangupBtn.addEventListener('click', endCall);
-
-  connectBtn.addEventListener('click', connectToPeer);
-  peerCodeInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') connectToPeer(); });
-
-  sendBtn.addEventListener('click', () => {
-    const text = msgInput.value.trim();
-    if(!text || !dataConn || !dataConn.open) return;
-    const t = Date.now();
-    dataConn.send({ type: 'msg', text, t });
-    addBubble(text, 'me', new Date(t));
-    msgInput.value = '';
-  });
-  msgInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendBtn.click(); });
-
   shareLocBtn.addEventListener('click', startSharingLocation);
   stopLocBtn.addEventListener('click', stopSharingLocation);
 
+  // ---------- Bağlantı / kod yönetimi ----------
+  function connectBtnClick(){
+    const code = sanitizeCode(peerCodeInput.value);
+    if(!code){ setLog('Eklemek istediğin kişinin kodunu girin.', true); return; }
+    if(!peer || peer.destroyed) peer = createPeer();
+    const doConnect = () => connectToPeerCode(code);
+    if(peer.open){ doConnect(); } else { peer.on('open', doConnect); }
+    peerCodeInput.value = '';
+  }
+  connectBtn.addEventListener('click', connectBtnClick);
+  peerCodeInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') connectBtnClick(); });
+
   resetCodeEl.addEventListener('click', () => {
-    if(!confirm('Kodu sıfırlarsan karşı taraf eski kodunla artık bulamaz. Emin misin?')) return;
+    if(!confirm('Rastgele yeni bir kod üretilecek, gruptakiler eski kodunla artık bulamaz. Emin misin?')) return;
     if(peer){ peer.destroy(); }
     myCodeEl.textContent = 'oluşturuluyor…';
     peer = createPeer(true);
   });
+  setCustomCodeBtn.addEventListener('click', () => {
+    const clean = sanitizeCode(customCodeInput.value);
+    if(!clean){ setLog('Geçerli bir kod yaz (sadece harf, rakam, tire).', true); return; }
+    if(!confirm('Kodun "' + clean + '" olarak ayarlanacak. Emin misin?')) return;
+    localStorage.setItem(STORAGE_KEY, clean);
+    if(peer){ peer.destroy(); }
+    myCodeEl.textContent = 'oluşturuluyor…';
+    peer = createPeer(false);
+    customCodeInput.value = '';
+  });
+  customCodeInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') setCustomCodeBtn.click(); });
 
   window.addEventListener('beforeunload', () => {
     if(watchId !== null){ navigator.geolocation.clearWatch(watchId); }
-    if(localAudioStream){ localAudioStream.getTracks().forEach(t => t.stop()); }
+    if(localStream){ localStream.getTracks().forEach(t => t.stop()); }
     if(peer){ peer.destroy(); }
   });
 
+  refreshParticipantsUI();
   peer = createPeer();
 </script>
 
